@@ -1,7 +1,8 @@
 clear all; clc; fclose all;addpath('PEER_NGA_Records');warning('off','all');direc = pwd;
 %% ================= NGAWEST2 GMs to AT2 and SPECTRA to .txt ====================== %%
 % author : JAWAD FAYAZ (email: jfayaz@uci.edu)
-%
+%  visit: (https://jfayaz.github.io)
+
 % ------------------------------ Instructions ------------------------------------- 
 % This code rewrites the Ground Motion Time-History files downloaded from the 
 % NGAWEST2 Database, into vector AT2 files with 4 headers containing information
