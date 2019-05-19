@@ -1,17 +1,20 @@
-clear all; clc; fclose all;addpath('PEER_NGA_Records');warning('off','all');direc = pwd;
+clear; clc; fclose all;addpath('PEER_NGA_Records');warning('off','all');direc = pwd;
 %% ================= NGAWEST2 GMs to AT2 and SPECTRA to .txt ====================== %%
 % author : JAWAD FAYAZ (email: jfayaz@uci.edu)
 %  visit: (https://jfayaz.github.io)
 
 % ------------------------------ Instructions ------------------------------------- 
 % This code rewrites the Ground Motion Time-History files downloaded from the 
-% NGAWEST2 Database, into vector AT2 files with 4 headers containing information
-% of the Earthquake and the Ground Motion
+% NGAWEST2 Database, into vector files 
 %
-% The two directions of the ground motion record will be named as 'GM1i' and 'GM2i',
-% where 'i' is the ground motion number which goes from 1 to 'n', 'n' being the total
-% number of ground motions present in the .csv file. The index "i' is the same as given
-% in the .csv file. 
+% The two directions of the ground motion record will be named as per the filenameX and
+% filenameY, and the Extension. For the given example in this code, the ground motions 
+% will be renamed as 'GM1i' and 'GM2i', where 'i' is the ground motion number which goes 
+% from 1 to 'n', where 'n' represents the total number of ground motions present in the 
+% .csv file. The index "i' is as per given in the .csv file. 
+% 
+% The code also provides the option to write 4 lines of headers containing information
+% of the Earthquake and the Ground Motion, if variable Header is kept to 'Yes'
 %
 % For example: 
 %     'GM11.AT2' --> Ground Motion 1 in direction 1 (direction 1 can be either one of the bi-directional GM as we are rotating the ground motions it does not matter) 
@@ -38,8 +41,11 @@ clear all; clc; fclose all;addpath('PEER_NGA_Records');warning('off','all');dire
 %
 %     
 %  INPUT:
-%  Input Variables includes only the .csv file which is downloaded from the
-%  NGA database alongwith the GM Time-Histories
+%  Input Variables includes:
+%  .csv file which is downloaded from the NGA database alongwith the GM Time-Histories
+%  filenameX
+%  filenameY
+%  Extension
 %
 %  OUTPUT:
 %  Rewritten GM files will be outputted in a new folder named "Formatted_GMs"
@@ -51,11 +57,24 @@ clear all; clc; fclose all;addpath('PEER_NGA_Records');warning('off','all');dire
 %% ====================== USER INPUTS =============================== %%
 
 % CSV File containing all the info of Recorded GMs (Please use same file provided by NGA Database)
-file ='_SearchResults.csv';                     
+file ='_SearchResults.csv';    
+
+% Name to which the GM files will be renamed to in sequence
+% in X-Direction
+filenameX = 'GM1'; 
+% in Y-Direction
+filenameY = 'GM2'; 
+
+% Extension to which the GM files will be renamed to in sequence
+Extension = '.AT2';
+
+% Do you want 4 lines of headers containing information of the Earthquake and the Ground Motion
+Header = 'Yes';
 
 %%%%%%================= END OF USER INPUT ========================%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% ---------- Renaming GMs ----------
+mkdir([direc,'\Formatted_GMs'])
 directory_files= struct2cell(dir('PEER_NGA_Records\*.AT2'))'; 
 [Data_nos, Data_txt]=xlsread(file,1);
 No_of_GMs = max(Data_nos(:,1));
@@ -65,12 +84,12 @@ cd([direc,'\PEER_NGA_Records'])
 for i = 1:No_of_GMs
     temp_X = strsplit((char(Data_txt(index_GM(1)+3+i,20))),' ');
     oldfile_X = temp_X{2};
-    newfile_X = [direc,'\Formatted_GMs\GM1',num2str(i),'.AT2'];
+    newfile_X = [direc,'\Formatted_GMs\',filenameX,num2str(i),Extension];
     copyfile(oldfile_X ,newfile_X);
 
     temp_Y = strsplit((char(Data_txt(index_GM(1)+3+i,21))),' ');
     oldfile_Y = temp_Y{2};
-    newfile_Y = [direc,'\Formatted_GMs\GM2',num2str(i),'.AT2'];
+    newfile_Y = [direc,'\Formatted_GMs\',filenameY,num2str(i),Extension];
     copyfile(oldfile_Y ,newfile_Y);
     
     Dur_5_75(i,1) = Data_nos(index_GM(1)+i-1,7);
@@ -90,69 +109,55 @@ end
 
 
 %% ---------- ReWritting GMs ---------- 
-mkdir([direc,'\Formatted_GMs'])
 cd([direc,'\Formatted_GMs'])
 for i = 1:No_of_GMs 
     
     %%%%% For X - Direction
-    file1 = ['GM1',num2str(i),'.AT2'];
+    file1 = [filenameX,num2str(i),Extension];
     myStructure1 = importdata(file1,' ',4);
     data1 = myStructure1.data;
     text1 = myStructure1.textdata;
     npts_split1 = strsplit(text1{4,2},',');
     npts1 = npts_split1{1};
     dt1 = text1{4,4};
-
-    h = 0;
-    for j = 1:size(data1,1)
-        for k = 1:size(data1,2)
-          h = h + 1;
-          gm_history1 (h) = data1(j,k);
-        end
-    end
-    
+    gm_history1 = reshape(data1',size(data1,1)*size(data1,2),1);
     gm_history1(isnan(gm_history1)) = [];
-    gm_history1 = gm_history1';
 
     fid = fopen (file1,'w');
-    fprintf(fid,'PEER NGA DATABASE RECORD IN X-DIRECTION \n');
-    fprintf(fid,'Earthquake:%s, Year:%.0f, Station:%s, Mechanism:%s \n', Earthquake{i,1},Year(i,1),Station{i,1},Mechanism{i,1});
-    fprintf(fid,'Mw=%.1f, Rrup=%.2f, RjB=%.2f, Arias Intensity=%.2f, D5-95=%.2f, D5-75=%.2f, Vs30=%.1f, Lowest Usable Frequncy=%.2f \n', Mw(i,1),Rrup(i,1),RjB(i,1),Arias_Int(i,1),Dur_5_95(i,1),Dur_5_75(i,1),Vs30(i,1),Lowest_Usable_Freq(i,1));
-    fprintf(fid,'NPTS=  %s, DT= %s\n',npts1,dt1);
+    if strcmpi(Header,'Yes')==1
+        fprintf(fid,'PEER NGA DATABASE RECORD IN X-DIRECTION \n');
+        fprintf(fid,'Earthquake:%s, Year:%.0f, Station:%s, Mechanism:%s \n', Earthquake{i,1},Year(i,1),Station{i,1},Mechanism{i,1});
+        fprintf(fid,'Mw=%.1f, Rrup=%.2f, RjB=%.2f, Arias Intensity=%.2f, D5-95=%.2f, D5-75=%.2f, Vs30=%.1f, Lowest Usable Frequncy=%.2f \n', Mw(i,1),Rrup(i,1),RjB(i,1),Arias_Int(i,1),Dur_5_95(i,1),Dur_5_75(i,1),Vs30(i,1),Lowest_Usable_Freq(i,1));
+        fprintf(fid,'NPTS=  %s, DT= %s\n',npts1,dt1);
+    end
     fprintf (fid,'%d\n',gm_history1);
     fclose(fid); 
     
     
     %%%%% For Y- Direction
-    file2 = ['GM2',num2str(i),'.AT2'];
+    file2 = [filenameY,num2str(i),Extension];
     myStructure2 = importdata(file2,' ',4);
     data2 = myStructure2.data;
     text2 = myStructure2.textdata;
     npts_split2 = strsplit(text2{4,2},',');
     npts2 = npts_split2{1};
     dt2 = text2{4,4};
-
-    h = 0;
-    for j = 1:size(data2,1)
-        for k = 1:size(data2,2)
-          h = h + 1;
-          gm_history2 (h) = data2(j,k);
-        end
-    end
-    
+    gm_history2 = reshape(data2',size(data2,1)*size(data2,2),1);
     gm_history2(isnan(gm_history2)) = [];
-    gm_history2 = gm_history2';
 
     fid = fopen (file2,'w');
-    fprintf(fid,'PEER NGA DATABASE RECORD IN X-DIRECTION \n');
-    fprintf(fid,'Earthquake:%s, Year:%.0f, Station:%s, Mechanism:%s \n', Earthquake{i,1},Year(i,1),Station{i,1},Mechanism{i,1});
-    fprintf(fid,'Mw=%.1f, Rrup=%.2f, RjB=%.2f, Arias Intensity=%.2f, D5-95=%.2f, D5-75=%.2f, Vs30=%.1f, Lowest Usable Frequncy=%.2f \n', Mw(i,1),Rrup(i,1),RjB(i,1),Arias_Int(i,1),Dur_5_95(i,1),Dur_5_75(i,1),Vs30(i,1),Lowest_Usable_Freq(i,1));
-    fprintf(fid,'NPTS=  %s, DT= %s\n',npts2,dt2);
+    if strcmpi(Header,'Yes')==1
+        fprintf(fid,'PEER NGA DATABASE RECORD IN X-DIRECTION \n');
+        fprintf(fid,'Earthquake:%s, Year:%.0f, Station:%s, Mechanism:%s \n', Earthquake{i,1},Year(i,1),Station{i,1},Mechanism{i,1});
+        fprintf(fid,'Mw=%.1f, Rrup=%.2f, RjB=%.2f, Arias Intensity=%.2f, D5-95=%.2f, D5-75=%.2f, Vs30=%.1f, Lowest Usable Frequncy=%.2f \n', Mw(i,1),Rrup(i,1),RjB(i,1),Arias_Int(i,1),Dur_5_95(i,1),Dur_5_75(i,1),Vs30(i,1),Lowest_Usable_Freq(i,1));
+        fprintf(fid,'NPTS=  %s, DT= %s\n',npts2,dt2);
+    end
     fprintf (fid,'%d\n',gm_history2);
     fclose(fid); 
     
-    fprintf('Ground Motions no. %d rewritten...\n',i) 
     
+    fprintf('Ground Motions no. %d rewritten...\n',i)
+    clearvars gm_history1 gm_history2  
 end
 
 
@@ -181,13 +186,13 @@ cd ([direc,'\Unscaled_Component_Spectra'])
 Periods = Data_nos(index_Period_Start(2):index_Period_End(3),1);
 for i = 1:No_of_GMs 
     Comp1_Spectra(:,i) = Data_nos(index_Period_Start(2):index_Period_End(3),3*i-1);
-    fid = fopen(['Comp_GM',num2str(i),'.txt'],'w');
+    fid = fopen(['CompX_GM',num2str(i),'.txt'],'w');
     fprintf(fid,'Period(s) Sa(g)\n');
     fprintf (fid,'%.2f %.6f \n', [Periods,Comp1_Spectra(:,i)]);
     fclose(fid); 
     
     Comp2_Spectra(:,i) = Data_nos(index_Period_Start(2):index_Period_End(3),3*i);
-    fid = fopen(['Comp_GM',num2str(i),'.txt'],'w');
+    fid = fopen(['CompY_GM',num2str(i),'.txt'],'w');
     fprintf(fid,'Period(s) Sa(g)\n');
     fprintf (fid,'%.2f %.4f \n', [Periods,Comp2_Spectra(:,i)]');
     fclose(fid); 
